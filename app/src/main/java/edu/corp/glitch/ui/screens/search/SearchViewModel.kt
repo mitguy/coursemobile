@@ -2,10 +2,10 @@ package edu.corp.glitch.ui.screens.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import edu.corp.glitch.data.models.Stream
 import edu.corp.glitch.data.models.User
 import edu.corp.glitch.data.repository.GlitchRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -23,8 +23,8 @@ class SearchViewModel
         private val _searchQuery = MutableStateFlow("")
         val searchQuery: StateFlow<String> = _searchQuery
 
-        private val _searchedUser = MutableStateFlow<User?>(null)
-        val searchedUser: StateFlow<User?> = _searchedUser
+        private val _searchedUsers = MutableStateFlow<List<User>>(emptyList())
+        val searchedUsers: StateFlow<List<User>> = _searchedUsers
 
         private val _isLoading = MutableStateFlow(false)
         val isLoading: StateFlow<Boolean> = _isLoading
@@ -49,10 +49,11 @@ class SearchViewModel
             }
         }
 
-        fun searchUser(username: String) {
-            _searchQuery.value = username
-            if (username.isBlank()) {
-                _searchedUser.value = null
+        fun searchUser(query: String) {
+            _searchQuery.value = query
+
+            if (query.isBlank()) {
+                _searchedUsers.value = emptyList()
                 loadLiveStreams()
                 return
             }
@@ -60,12 +61,12 @@ class SearchViewModel
             viewModelScope.launch {
                 _isLoading.value = true
                 try {
-                    val response = repository.getUserByUsername(username)
+                    val response = repository.searchUsers(query)
                     if (response.isSuccessful) {
-                        _searchedUser.value = response.body()
+                        _searchedUsers.value = response.body() ?: emptyList()
                     }
                 } catch (e: Exception) {
-                    _searchedUser.value = null
+                    _searchedUsers.value = emptyList()
                 } finally {
                     _isLoading.value = false
                 }

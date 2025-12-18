@@ -14,6 +14,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -40,7 +41,10 @@ object AppModule {
                             }
                         }.build()
                 chain.proceed(request)
-            }.build()
+            }.connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
 
     @Provides
     @Singleton
@@ -49,6 +53,7 @@ object AppModule {
             .Builder()
             // .baseUrl("http://10.0.2.2:8989/") // For Android emulator
             .baseUrl("http://arch.local:8989/")
+            // .baseUrl("http://10.87.7.197:8989/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

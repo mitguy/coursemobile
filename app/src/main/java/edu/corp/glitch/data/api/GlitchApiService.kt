@@ -42,6 +42,11 @@ interface GlitchApiService {
         @Path("username") username: String,
     ): Response<User>
 
+    @GET("api/users/search/{query}")
+    suspend fun searchUsers(
+      @Path("query") query: String,
+    ): Response<List<User>>
+
     @POST("api/users/update")
     suspend fun updateUser(
         @Body request: UpdateUserRequest,

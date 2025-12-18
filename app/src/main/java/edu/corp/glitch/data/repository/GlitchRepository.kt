@@ -41,6 +41,8 @@ class GlitchRepository
 
         suspend fun getUserByUsername(username: String) = api.getUserByUsername(username)
 
+        suspend fun searchUsers(query: String) = api.searchUsers(query)
+
         suspend fun updateUser(bio: String) = api.updateUser(UpdateUserRequest(bio))
 
         suspend fun uploadProfilePic(file: File): retrofit2.Response<User> {

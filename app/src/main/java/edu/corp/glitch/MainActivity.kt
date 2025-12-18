@@ -2,13 +2,17 @@ package edu.corp.glitch
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.core.view.WindowCompat
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -20,10 +24,9 @@ import edu.corp.glitch.ui.screens.live.LiveScreen
 import edu.corp.glitch.ui.screens.profile.ProfileScreen
 import edu.corp.glitch.ui.screens.search.SearchScreen
 import edu.corp.glitch.ui.screens.settings.SettingsScreen
+import edu.corp.glitch.ui.screens.stream.StreamScreen
 import edu.corp.glitch.ui.theme.GlitchTheme
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -37,6 +40,28 @@ class MainActivity : ComponentActivity() {
         
         setContent {
             val isDarkMode by userPreferences.isDarkMode.collectAsState(initial = false)
+            
+            // Update system bars based on theme
+            LaunchedEffect(isDarkMode) {
+                enableEdgeToEdge(
+                    statusBarStyle = if (isDarkMode) {
+                        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        SystemBarStyle.light(
+                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.TRANSPARENT
+                        )
+                    },
+                    navigationBarStyle = if (isDarkMode) {
+                        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        SystemBarStyle.light(
+                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.TRANSPARENT
+                        )
+                    }
+                )
+            }
             
             GlitchTheme(darkTheme = isDarkMode) {
                 GlitchApp(userPreferences)
@@ -108,17 +133,27 @@ fun MainScreen() {
             modifier = Modifier.padding(padding)
         ) {
             composable("live") {
-                LiveScreen(
-                    onStreamClick = { username ->
-                        navController.navigate("profile/$username")
-                    }
-                )
+              LiveScreen(
+                  onStreamClick = { username ->
+                      navController.navigate("stream/$username")
+                  }
+              )
+            }
+
+            composable("stream/{username}") { backStackEntry ->
+                val username = backStackEntry.arguments?.getString("username")
+                if (username != null) {
+                    StreamScreen(
+                        username = username,
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
             }
             
             composable("search") {
                 SearchScreen(
                     onStreamClick = { username ->
-                        navController.navigate("profile/$username")
+                        navController.navigate("stream/$username")
                     },
                     onUserClick = { username ->
                         navController.navigate("profile/$username")
@@ -149,4 +184,3 @@ fun MainScreen() {
         }
     }
 }
-

@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import edu.corp.glitch.data.models.Stream
+import edu.corp.glitch.data.models.User
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,7 +24,7 @@ fun SearchScreen(
 ) {
     val streams by viewModel.streams.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
-    val searchedUser by viewModel.searchedUser.collectAsState()
+    val searchedUsers by viewModel.searchedUsers.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     
     var query by remember { mutableStateOf("") }
@@ -39,11 +40,17 @@ fun SearchScreen(
                             viewModel.searchUser(it)
                         },
                         placeholder = { Text("Search users...") },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(end = 16.dp), // Add right padding
                         trailingIcon = {
                             Icon(Icons.Default.Search, "Search")
                         },
-                        singleLine = true
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        )
                     )
                 }
             )
@@ -58,36 +65,21 @@ fun SearchScreen(
             ) {
                 CircularProgressIndicator()
             }
-        } else if (searchQuery.isNotBlank() && searchedUser != null) {
-            // Show searched user
-            Column(
+        } else if (searchQuery.isNotBlank()) {
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(16.dp)
             ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onUserClick(searchedUser!!.username) }
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = searchedUser!!.username,
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        if (!searchedUser!!.bio.isNullOrBlank()) {
-                            Text(
-                                text = searchedUser!!.bio!!,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
+                if (searchedUsers.isEmpty()) {
+                    item {
+                        Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No users found matching '$searchQuery'")
                         }
-                        Text(
-                            text = "${searchedUser!!.followersCount} followers",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
+                    }
+                } else {
+                    items(searchedUsers) { user ->
+                        UserSearchResultItem(user = user, onClick = { onUserClick(user.username) })
                     }
                 }
             }
@@ -141,8 +133,10 @@ fun StreamCard(stream: Stream, onClick: (String) -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 if (stream.live) {
-                    Badge {
-                        Text("LIVE", color = MaterialTheme.colorScheme.onError)
+                    Badge(
+                        containerColor = MaterialTheme.colorScheme.error
+                    ) {
+                        Text("LIVE")
                     }
                 }
                 Text("${stream.viewers} viewers")
@@ -151,4 +145,19 @@ fun StreamCard(stream: Stream, onClick: (String) -> Unit) {
     }
 }
 
-
+@Composable
+fun UserSearchResultItem(user: User, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable { onClick() }
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = user.username, style = MaterialTheme.typography.titleMedium)
+            if (!user.bio.isNullOrBlank()) {
+                Text(text = user.bio, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+            }
+        }
+    }
+}
