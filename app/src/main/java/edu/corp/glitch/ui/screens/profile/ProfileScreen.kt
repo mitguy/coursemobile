@@ -1,14 +1,24 @@
 package edu.corp.glitch.ui.screens.profile
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import edu.corp.glitch.ui.components.ShowErrorSnackbar
+import edu.corp.glitch.ui.components.UserAvatar
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -20,8 +30,26 @@ fun ProfileScreen(
     val user by viewModel.user.collectAsState()
     val isFollowing by viewModel.isFollowing.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
     var showEditDialog by remember { mutableStateOf(false) }
     var isOwnProfile by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            val inputStream = context.contentResolver.openInputStream(it)
+            val file = File(context.cacheDir, "profile_pic_${System.currentTimeMillis()}.jpg")
+            inputStream?.use { input ->
+                FileOutputStream(file).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            viewModel.uploadProfilePic(file)
+        }
+    }
     
     LaunchedEffect(username) {
         if (username != null) {
@@ -32,6 +60,12 @@ fun ProfileScreen(
             isOwnProfile = true
         }
     }
+    
+    ShowErrorSnackbar(
+        error = errorMessage,
+        snackbarHostState = snackbarHostState,
+        onErrorShown = { viewModel.clearError() }
+    )
     
     Scaffold(
         topBar = {
@@ -45,7 +79,8 @@ fun ProfileScreen(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         if (isLoading) {
             Box(
@@ -61,8 +96,35 @@ fun ProfileScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(16.dp)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Box {
+                    UserAvatar(
+                        username = user!!.username,
+                        profilePicData = user!!.profilePic,
+                        size = 120.dp
+                    )
+                    
+                    if (isOwnProfile) {
+                        FloatingActionButton(
+                            onClick = { imagePickerLauncher.launch("image/*") },
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(36.dp),
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ) {
+                            Icon(
+                                Icons.Default.CameraAlt,
+                                contentDescription = "Change avatar",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
                 Text(
                     text = user!!.username,
                     style = MaterialTheme.typography.headlineMedium
@@ -137,4 +199,3 @@ fun EditBioDialog(
         }
     )
 }
-

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import edu.corp.glitch.data.models.ChatMessage
+import edu.corp.glitch.data.models.ErrorResponse
 import edu.corp.glitch.data.models.Stream
 import edu.corp.glitch.data.models.User
 import edu.corp.glitch.data.preferences.UserPreferences
@@ -38,6 +39,9 @@ class StreamViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage
+
     private var webSocket: WebSocket? = null
     private val gson = Gson()
 
@@ -48,9 +52,12 @@ class StreamViewModel @Inject constructor(
                 val response = repository.getStreamByUsername(username)
                 if (response.isSuccessful) {
                     _stream.value = response.body()
+                } else {
+                    val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                    _errorMessage.value = "Failed to load stream: $errorMsg"
                 }
             } catch (e: Exception) {
-                // Handle error
+                _errorMessage.value = "Error loading stream: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -64,9 +71,12 @@ class StreamViewModel @Inject constructor(
                 if (response.isSuccessful) {
                     _user.value = response.body()
                     response.body()?.id?.let { checkIfFollowing(it) }
+                } else {
+                    val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                    _errorMessage.value = "Failed to load user: $errorMsg"
                 }
             } catch (e: Exception) {
-                // Handle error
+                _errorMessage.value = "Error loading user: ${e.message}"
             }
         }
     }
@@ -90,10 +100,9 @@ class StreamViewModel @Inject constructor(
                     repository.createFollow(userId)
                     _isFollowing.value = true
                 }
-                // Reload user to update follower count
                 _user.value?.username?.let { loadUser(it) }
             } catch (e: Exception) {
-                // Handle error
+                _errorMessage.value = "Error toggling follow: ${e.message}"
             }
         }
     }
@@ -122,11 +131,11 @@ class StreamViewModel @Inject constructor(
                     }
 
                     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                        // Handle connection failure
+                        _errorMessage.value = "Chat connection failed: ${t.message}"
                     }
                 })
             } catch (e: Exception) {
-                // Handle error
+                _errorMessage.value = "Error connecting to chat: ${e.message}"
             }
         }
     }
@@ -142,6 +151,23 @@ class StreamViewModel @Inject constructor(
         webSocket?.close(1000, "User left")
         webSocket = null
         _chatMessages.value = emptyList()
+    }
+
+    private fun parseErrorMessage(errorBody: String?): String {
+        return try {
+            if (errorBody != null) {
+                val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
+                errorResponse.message ?: errorResponse.error ?: "Unknown error"
+            } else {
+                "Unknown error"
+            }
+        } catch (e: Exception) {
+            errorBody ?: "Unknown error"
+        }
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
     }
 
     override fun onCleared() {

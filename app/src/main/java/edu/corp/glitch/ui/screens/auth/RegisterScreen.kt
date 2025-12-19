@@ -43,11 +43,29 @@ fun RegisterScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            if (uiState is AuthUiState.Error) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    Text(
+                        text = (uiState as AuthUiState.Error).message,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+            
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
                 label = { Text("Username") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                isError = uiState is AuthUiState.Error
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -56,7 +74,8 @@ fun RegisterScreen(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                isError = uiState is AuthUiState.Error
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -66,7 +85,8 @@ fun RegisterScreen(
                 onValueChange = { password = it },
                 label = { Text("Password") },
                 visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                isError = uiState is AuthUiState.Error
             )
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -80,14 +100,6 @@ fun RegisterScreen(
                 ) {
                     Text("Register")
                 }
-            }
-            
-            if (uiState is AuthUiState.Error) {
-                Text(
-                    text = (uiState as AuthUiState.Error).message,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
             }
             
             TextButton(onClick = onNavigateToLogin) {

@@ -29,6 +29,12 @@ class SearchViewModel
         private val _isLoading = MutableStateFlow(false)
         val isLoading: StateFlow<Boolean> = _isLoading
 
+        private val _streamUsersMap = MutableStateFlow<Map<String, User>>(emptyMap())
+        val streamUsersMap: StateFlow<Map<String, User>> = _streamUsersMap
+
+        private val _errorMessage = MutableStateFlow<String?>(null)
+        val errorMessage: StateFlow<String?> = _errorMessage
+
         init {
             loadLiveStreams()
         }
@@ -39,10 +45,26 @@ class SearchViewModel
                 try {
                     val response = repository.getLiveStreams()
                     if (response.isSuccessful) {
-                        _streams.value = response.body() ?: emptyList()
+                        val streamsList = response.body() ?: emptyList()
+                        _streams.value = streamsList
+
+                        val users = mutableMapOf<String, User>()
+                        streamsList.forEach { stream ->
+                            try {
+                                val userResponse = repository.getUserByUsername(stream.username)
+                                if (userResponse.isSuccessful) {
+                                    userResponse.body()?.let { user ->
+                                        users[stream.username] = user
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                _errorMessage.value = "Error: ${e.message}"
+                            }
+                        }
+                        _streamUsersMap.value = users
                     }
                 } catch (e: Exception) {
-                    // Handle error
+                    _errorMessage.value = "Error: ${e.message}"
                 } finally {
                     _isLoading.value = false
                 }

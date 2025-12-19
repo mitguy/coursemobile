@@ -5,6 +5,6 @@ data class User(
     val username: String,
     val createdAt: String,
     val bio: String?,
-    val profilePic: ByteArray?,
+    val profilePic: String?,
     val followersCount: Long,
 )

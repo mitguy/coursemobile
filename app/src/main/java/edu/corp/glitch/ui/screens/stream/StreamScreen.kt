@@ -1,6 +1,9 @@
 package edu.corp.glitch.ui.screens.stream
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,8 +20,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import edu.corp.glitch.data.models.ChatMessage
+import edu.corp.glitch.ui.components.ShowErrorSnackbar
+import edu.corp.glitch.ui.components.UserAvatar
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -31,6 +39,7 @@ import java.util.*
 fun StreamScreen(
     username: String,
     onBackClick: () -> Unit,
+    onUserClick: (String) -> Unit,
     viewModel: StreamViewModel = hiltViewModel()
 ) {
     val stream by viewModel.stream.collectAsState()
@@ -38,9 +47,13 @@ fun StreamScreen(
     val isFollowing by viewModel.isFollowing.collectAsState()
     val chatMessages by viewModel.chatMessages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
     var messageText by remember { mutableStateOf("") }
     var isFullscreen by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val activity = context as? Activity
 
     LaunchedEffect(username) {
         viewModel.loadStream(username)
@@ -54,11 +67,42 @@ fun StreamScreen(
         }
     }
 
+    LaunchedEffect(isFullscreen) {
+        activity?.let {
+            if (isFullscreen) {
+                it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                val window = it.window
+                val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+                insetsController.apply {
+                    hide(WindowInsetsCompat.Type.systemBars())
+                    systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+            } else {
+                it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                val window = it.window
+                val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+                insetsController.show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             viewModel.disconnectChat()
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            activity?.let {
+                val window = it.window
+                val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+                insetsController.show(WindowInsetsCompat.Type.systemBars())
+            }
         }
     }
+
+    ShowErrorSnackbar(
+        error = errorMessage,
+        snackbarHostState = snackbarHostState,
+        onErrorShown = { viewModel.clearError() }
+    )
 
     if (isFullscreen) {
         Box(
@@ -70,7 +114,7 @@ fun StreamScreen(
                 streamUrl = "http://arch.local:8080/hls/$username.m3u8",
                 modifier = Modifier.fillMaxSize()
             )
-            
+
             IconButton(
                 onClick = { isFullscreen = false },
                 modifier = Modifier
@@ -78,7 +122,7 @@ fun StreamScreen(
                     .padding(16.dp)
             ) {
                 Icon(
-                    Icons.Default.Fullscreen,
+                    Icons.Default.FullscreenExit,
                     contentDescription = "Exit Fullscreen",
                     tint = Color.White
                 )
@@ -95,7 +139,8 @@ fun StreamScreen(
                         }
                     }
                 )
-            }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { padding ->
             if (isLoading) {
                 Box(
@@ -135,7 +180,7 @@ fun StreamScreen(
                                 )
                             }
                         }
-                        
+
                         if (stream?.live == true) {
                             IconButton(
                                 onClick = { isFullscreen = true },
@@ -150,7 +195,7 @@ fun StreamScreen(
                                 )
                             }
                         }
-                        
+
                         if (stream?.live == true) {
                             Badge(
                                 containerColor = Color.Red,
@@ -203,17 +248,25 @@ fun StreamScreen(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.clickable { onUserClick(username) }
                             ) {
-                                Text(
-                                    text = user?.username ?: username,
-                                    style = MaterialTheme.typography.titleMedium
+                                UserAvatar(
+                                    username = user?.username ?: username,
+                                    profilePicData = user?.profilePic,
+                                    size = 32.dp
                                 )
-                                Text(
-                                    text = "${user?.followersCount ?: 0} followers",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Column {
+                                    Text(
+                                        text = user?.username ?: username,
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Text(
+                                        text = "${user?.followersCount ?: 0} followers",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
 
                             Button(
@@ -362,3 +415,4 @@ fun formatTimestamp(timestamp: String): String {
         timestamp
     }
 }
+

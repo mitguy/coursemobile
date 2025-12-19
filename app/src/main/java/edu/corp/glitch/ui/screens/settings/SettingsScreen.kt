@@ -1,12 +1,17 @@
 package edu.corp.glitch.ui.screens.settings
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -16,24 +21,35 @@ fun SettingsScreen(
 ) {
     val isDarkMode by viewModel.isDarkMode.collectAsState(initial = false)
     val username by viewModel.username.collectAsState(initial = "")
+    val email by viewModel.email.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
-    
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+
     var showEmailDialog by remember { mutableStateOf(false) }
     var showPasswordDialog by remember { mutableStateOf(false) }
-    
+
     LaunchedEffect(updateState) {
-        if (updateState is UpdateState.Success) {
-            // Show success message
-            viewModel.resetState()
+        when (val state = updateState) {
+            is UpdateState.Success -> {
+                snackbarHostState.showSnackbar(state.message)
+                viewModel.resetState()
+            }
+            is UpdateState.Error -> {
+                snackbarHostState.showSnackbar(state.message)
+                viewModel.resetState()
+            }
+            else -> {}
         }
     }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Settings") }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -42,13 +58,53 @@ fun SettingsScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Account: $username",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
+                text = "Account Information",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
             
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Username",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = username!!.ifEmpty { "Loading..." },
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+                    )
+                    
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    
+                    Text(
+                        text = "Email",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = email ?: "Loading...",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+
+            Text(
+                text = "Preferences",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Dark Mode")
@@ -57,27 +113,44 @@ fun SettingsScreen(
                     onCheckedChange = { viewModel.toggleDarkMode() }
                 )
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
+
+            Text(
+                text = "Account Management",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
             Button(
                 onClick = { showEmailDialog = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Update Email")
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             Button(
                 onClick = { showPasswordDialog = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Update Password")
             }
-            
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    viewModel.downloadCSV { csvFile ->
+                        shareCSV(context, csvFile)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Download CSV Export")
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             Button(
                 onClick = {
                     viewModel.logout()
@@ -90,27 +163,20 @@ fun SettingsScreen(
             ) {
                 Text("Logout")
             }
-            
-            if (updateState is UpdateState.Error) {
-                Text(
-                    text = (updateState as UpdateState.Error).message,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
         }
     }
-    
+
     if (showEmailDialog) {
         UpdateEmailDialog(
+            currentEmail = email ?: "",
             onDismiss = { showEmailDialog = false },
-            onUpdate = { email ->
-                viewModel.updateEmail(email)
+            onUpdate = { newEmail ->
+                viewModel.updateEmail(newEmail)
                 showEmailDialog = false
             }
         )
     }
-    
+
     if (showPasswordDialog) {
         UpdatePasswordDialog(
             onDismiss = { showPasswordDialog = false },
@@ -122,13 +188,30 @@ fun SettingsScreen(
     }
 }
 
+fun shareCSV(context: Context, file: File) {
+    val uri = FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        file
+    )
+
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/csv"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+
+    context.startActivity(Intent.createChooser(intent, "Share CSV"))
+}
+
 @Composable
 fun UpdateEmailDialog(
+    currentEmail: String,
     onDismiss: () -> Unit,
     onUpdate: (String) -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
-    
+    var email by remember { mutableStateOf(currentEmail) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Update Email") },
@@ -160,7 +243,7 @@ fun UpdatePasswordDialog(
 ) {
     var oldPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
-    
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Update Password") },
@@ -195,4 +278,3 @@ fun UpdatePasswordDialog(
         }
     )
 }
-

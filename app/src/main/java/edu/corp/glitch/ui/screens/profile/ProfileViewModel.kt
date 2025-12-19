@@ -2,10 +2,12 @@ package edu.corp.glitch.ui.screens.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
+import dagger.hilt.android.lifecycle.HiltViewModel
+import edu.corp.glitch.data.models.ErrorResponse
 import edu.corp.glitch.data.models.User
 import edu.corp.glitch.data.preferences.UserPreferences
 import edu.corp.glitch.data.repository.GlitchRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -29,6 +31,11 @@ class ProfileViewModel
         private val _isLoading = MutableStateFlow(false)
         val isLoading: StateFlow<Boolean> = _isLoading
 
+        private val _errorMessage = MutableStateFlow<String?>(null)
+        val errorMessage: StateFlow<String?> = _errorMessage
+
+        private val gson = Gson()
+
         fun loadCurrentUser() {
             viewModelScope.launch {
                 _isLoading.value = true
@@ -36,9 +43,12 @@ class ProfileViewModel
                     val response = repository.getCurrentUser()
                     if (response.isSuccessful) {
                         _user.value = response.body()
+                    } else {
+                        val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                        _errorMessage.value = "Failed to load profile: $errorMsg"
                     }
                 } catch (e: Exception) {
-                    // Handle error
+                    _errorMessage.value = "Error: ${e.message}"
                 } finally {
                     _isLoading.value = false
                 }
@@ -53,9 +63,12 @@ class ProfileViewModel
                     if (response.isSuccessful) {
                         _user.value = response.body()
                         checkIfFollowing(response.body()?.id ?: 0)
+                    } else {
+                        val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                        _errorMessage.value = "Failed to load user: $errorMsg"
                     }
                 } catch (e: Exception) {
-                    // Handle error
+                    _errorMessage.value = "Error: ${e.message}"
                 } finally {
                     _isLoading.value = false
                 }
@@ -82,7 +95,7 @@ class ProfileViewModel
                         _isFollowing.value = true
                     }
                 } catch (e: Exception) {
-                    // Handle error
+                    _errorMessage.value = "Error toggling follow: ${e.message}"
                 }
             }
         }
@@ -93,9 +106,12 @@ class ProfileViewModel
                     val response = repository.updateUser(bio)
                     if (response.isSuccessful) {
                         _user.value = response.body()
+                    } else {
+                        val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                        _errorMessage.value = "Failed to update bio: $errorMsg"
                     }
                 } catch (e: Exception) {
-                    // Handle error
+                    _errorMessage.value = "Error: ${e.message}"
                 }
             }
         }
@@ -106,15 +122,34 @@ class ProfileViewModel
                     val response = repository.uploadProfilePic(file)
                     if (response.isSuccessful) {
                         _user.value = response.body()
+                    } else {
+                        val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                        _errorMessage.value = "Failed to upload picture: $errorMsg"
                     }
                 } catch (e: Exception) {
-                    // Handle error
+                    _errorMessage.value = "Error: ${e.message}"
                 }
             }
         }
 
+        private fun parseErrorMessage(errorBody: String?): String =
+            try {
+                if (errorBody != null) {
+                    val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
+                    errorResponse.message ?: errorResponse.error ?: "Unknown error"
+                } else {
+                    "Unknown error"
+                }
+            } catch (e: Exception) {
+                errorBody ?: "Unknown error"
+            }
+
         suspend fun isOwnProfile(): Boolean {
             val currentUsername = userPreferences.username.first()
             return _user.value?.username == currentUsername
+        }
+
+        fun clearError() {
+            _errorMessage.value = null
         }
     }

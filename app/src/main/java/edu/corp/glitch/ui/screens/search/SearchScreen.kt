@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import edu.corp.glitch.data.models.Stream
 import edu.corp.glitch.data.models.User
+import edu.corp.glitch.ui.components.UserAvatar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,10 +26,11 @@ fun SearchScreen(
     val streams by viewModel.streams.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchedUsers by viewModel.searchedUsers.collectAsState()
+    val streamUsersMap by viewModel.streamUsersMap.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    
+
     var query by remember { mutableStateOf("") }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -42,7 +44,7 @@ fun SearchScreen(
                         placeholder = { Text("Search users...") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(end = 16.dp), // Add right padding
+                            .padding(end = 16.dp),
                         trailingIcon = {
                             Icon(Icons.Default.Search, "Search")
                         },
@@ -84,7 +86,6 @@ fun SearchScreen(
                 }
             }
         } else {
-            // Show all live streams
             if (streams.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -101,7 +102,8 @@ fun SearchScreen(
                         .padding(padding)
                 ) {
                     items(streams) { stream ->
-                        StreamCard(stream, onStreamClick)
+                        val user = streamUsersMap[stream.username]
+                        StreamCard(stream, user, onStreamClick)
                     }
                 }
             }
@@ -110,36 +112,46 @@ fun SearchScreen(
 }
 
 @Composable
-fun StreamCard(stream: Stream, onClick: (String) -> Unit) {
+fun StreamCard(stream: Stream, user: User?, onClick: (String) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable { onClick(stream.username) }
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = stream.username,
-                style = MaterialTheme.typography.titleMedium
+            UserAvatar(
+                username = stream.username,
+                profilePicData = user?.profilePic,
+                size = 48.dp
             )
-            Text(
-                text = stream.title ?: "No title",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Row(
-                modifier = Modifier.padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                if (stream.live) {
-                    Badge(
-                        containerColor = MaterialTheme.colorScheme.error
-                    ) {
-                        Text("LIVE")
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stream.username,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = stream.title ?: "No title",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Row(
+                    modifier = Modifier.padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (stream.live) {
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.error
+                        ) {
+                            Text("LIVE")
+                        }
                     }
+                    Text("${stream.viewers} viewers")
                 }
-                Text("${stream.viewers} viewers")
             }
         }
     }
@@ -153,10 +165,22 @@ fun UserSearchResultItem(user: User, onClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clickable { onClick() }
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = user.username, style = MaterialTheme.typography.titleMedium)
-            if (!user.bio.isNullOrBlank()) {
-                Text(text = user.bio, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            UserAvatar(
+                username = user.username,
+                profilePicData = user.profilePic,
+                size = 48.dp
+            )
+
+            Column {
+                Text(text = user.username, style = MaterialTheme.typography.titleMedium)
+                if (!user.bio.isNullOrBlank()) {
+                    Text(text = user.bio, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                }
             }
         }
     }

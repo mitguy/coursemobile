@@ -13,16 +13,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import edu.corp.glitch.data.models.Follow
+import edu.corp.glitch.data.models.User
+import edu.corp.glitch.ui.components.UserAvatar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LiveScreen(
     onStreamClick: (String) -> Unit,
+    onUserClick: (String) -> Unit = {},
     viewModel: LiveViewModel = hiltViewModel()
 ) {
     val liveFollows by viewModel.liveFollows.collectAsState()
+    val usersMap by viewModel.usersMap.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -60,7 +64,13 @@ fun LiveScreen(
                     .padding(padding)
             ) {
                 items(liveFollows) { follow ->
-                    LiveStreamCard(follow, onStreamClick)
+                    val user = follow.toStream?.username?.let { usersMap[it] }
+                    LiveStreamCard(
+                        follow = follow,
+                        user = user,
+                        onStreamClick = onStreamClick,
+                        onUserClick = onUserClick
+                    )
                 }
             }
         }
@@ -68,32 +78,55 @@ fun LiveScreen(
 }
 
 @Composable
-fun LiveStreamCard(follow: Follow, onClick: (String) -> Unit) {
+fun LiveStreamCard(
+    follow: Follow,
+    user: User?,
+    onStreamClick: (String) -> Unit,
+    onUserClick: (String) -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { follow.toStream?.username?.let { onClick(it) } }
+            .clickable { follow.toStream?.username?.let { onStreamClick(it) } }
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = follow.toStream?.username ?: "",
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = follow.toStream?.title ?: "No title",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Row(
-                modifier = Modifier.padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Badge {
-                    Text("LIVE", color = MaterialTheme.colorScheme.onError)
+            UserAvatar(
+                username = follow.toStream?.username ?: "",
+                profilePicData = user?.profilePic,
+                size = 56.dp,
+                modifier = Modifier.clickable { 
+                    follow.toStream?.username?.let { onUserClick(it) }
                 }
-                Text("${follow.toStream?.viewers ?: 0} viewers")
+            )
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = follow.toStream?.username ?: "",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.clickable { 
+                        follow.toStream?.username?.let { onUserClick(it) }
+                    }
+                )
+                Text(
+                    text = follow.toStream?.title ?: "No title",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Row(
+                    modifier = Modifier.padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Badge(
+                        containerColor = MaterialTheme.colorScheme.error
+                    ) {
+                        Text("LIVE")
+                    }
+                    Text("${follow.toStream?.viewers ?: 0} viewers")
+                }
             }
         }
     }
