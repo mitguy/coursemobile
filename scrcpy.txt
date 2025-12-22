@@ -1,0 +1,2 @@
+scrcpy --video-codec=h265 -m1920 --max-fps=60 --no-audio -K
+scrcpy --video-codec=h265 --no-audio

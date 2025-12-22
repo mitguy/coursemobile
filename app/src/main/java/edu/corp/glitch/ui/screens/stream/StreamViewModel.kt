@@ -127,7 +127,7 @@ class StreamViewModel @Inject constructor(
                             currentMessages.add(message)
                             _chatMessages.value = currentMessages
                         } catch (e: Exception) {
-                            // Handle parsing error
+                            _errorMessage.value = "Error connecting to chat: ${e.message}"
                         }
                     }
 
