@@ -111,7 +111,8 @@ fun StreamScreen(
                 .background(Color.Black)
         ) {
             VideoPlayer(
-                streamUrl = "http://arch.local:8080/hls/$username.m3u8",
+                streamUrl = "http://10.87.7.197:8080/hls/$username.m3u8",
+                // streamUrl = "http://arch.local:8080/hls/$username.m3u8",
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -165,7 +166,8 @@ fun StreamScreen(
                     ) {
                         if (stream?.live == true) {
                             VideoPlayer(
-                                streamUrl = "http://arch.local:8080/hls/$username.m3u8",
+                                streamUrl = "http://10.87.7.197:8080/hls/$username.m3u8",
+                                // streamUrl = "http://arch.local:8080/hls/$username.m3u8",
                                 modifier = Modifier.fillMaxSize()
                             )
                         } else {

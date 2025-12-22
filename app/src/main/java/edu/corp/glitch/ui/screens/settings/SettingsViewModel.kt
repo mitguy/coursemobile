@@ -108,7 +108,8 @@ class SettingsViewModel
                     val request =
                         Request
                             .Builder()
-                            .url("http://arch.local:8989/api/vods/export")
+                            // .url("http://arch.local:8989/api/vods/export")
+                            .url("http://10.87.7.197:8989/api/vods/export")
                             .addHeader("Authorization", "Bearer $token")
                             .build()
 

@@ -48,15 +48,22 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit =
-        Retrofit
+    fun provideRetrofit(
+        @ApplicationContext context: Context,
+        okHttpClient: OkHttpClient,
+    ): Retrofit {
+        // val backendUrl: String = context.getString(edu.corp.glitch.R.string.backend_url)
+
+        return Retrofit
             .Builder()
             // .baseUrl("http://10.0.2.2:8989/") // For Android emulator
-            .baseUrl("http://arch.local:8989/")
-            // .baseUrl("http://10.87.7.197:8989/")
+            // .baseUrl("http://arch.local:8989/")
+            .baseUrl("http://10.87.7.197:8989/")
+            // .baseUrl("http://$backendUrl:8989/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
+    }
 
     @Provides
     @Singleton

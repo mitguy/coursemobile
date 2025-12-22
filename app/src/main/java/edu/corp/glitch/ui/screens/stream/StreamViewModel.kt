@@ -113,7 +113,8 @@ class StreamViewModel @Inject constructor(
                 val token = userPreferences.authToken.first() ?: return@launch
 
                 val request = Request.Builder()
-                    .url("ws://arch.local:8989/api/chat/$streamUsername")
+                    // .url("ws://arch.local:8989/api/chat/$streamUsername")
+                    .url("ws://10.87.7.197:8989/api/chat/$streamUsername")
                     .addHeader("Authorization", "Bearer $token")
                     .addHeader("chat", streamUsername)
                     .build()

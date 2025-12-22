@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.google.dagger.hilt.android")
     id("kotlin-kapt")
+    id("org.jetbrains.dokka")
 }
 
 android {
@@ -58,6 +59,10 @@ android {
 
 kapt {
     correctErrorTypes = true
+}
+
+tasks.dokkaHtml {
+    outputDirectory.set(file("$buildDir/dokka"))
 }
 
 dependencies {

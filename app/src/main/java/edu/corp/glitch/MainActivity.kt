@@ -103,7 +103,8 @@ class MainActivity : ComponentActivity() {
         return withContext(Dispatchers.IO) {
             try {
                 val request = Request.Builder()
-                    .url("http://arch.local:8989/api/auth/health")
+                    // .url("http://arch.local:8989/api/auth/health")
+                    .url("http://10.87.7.197:8989/api/auth/health")
                     .build()
 
                 val response = okHttpClient.newCall(request).execute()
