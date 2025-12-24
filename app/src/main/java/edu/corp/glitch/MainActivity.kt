@@ -136,40 +136,43 @@ fun GlitchApp(userPreferences: UserPreferences) {
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
+    var isStreamScreenFullscreen by remember { mutableStateOf(false) } 
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
+            if (!isStreamScreenFullscreen) {
+                NavigationBar {
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentDestination = navBackStackEntry?.destination
 
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.LiveTv, "Live") },
-                    label = { Text("Live") },
-                    selected = currentDestination?.hierarchy?.any { it.route == "live" } == true,
-                    onClick = { navController.navigate("live") }
-                )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.LiveTv, "Live") },
+                        label = { Text("Live") },
+                        selected = currentDestination?.hierarchy?.any { it.route == "live" } == true,
+                        onClick = { navController.navigate("live") }
+                    )
 
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Search, "Search") },
-                    label = { Text("Search") },
-                    selected = currentDestination?.hierarchy?.any { it.route == "search" } == true,
-                    onClick = { navController.navigate("search") }
-                )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Search, "Search") },
+                        label = { Text("Search") },
+                        selected = currentDestination?.hierarchy?.any { it.route == "search" } == true,
+                        onClick = { navController.navigate("search") }
+                    )
 
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Person, "Profile") },
-                    label = { Text("Profile") },
-                    selected = currentDestination?.hierarchy?.any { it.route == "profile" } == true,
-                    onClick = { navController.navigate("profile") }
-                )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Person, "Profile") },
+                        label = { Text("Profile") },
+                        selected = currentDestination?.hierarchy?.any { it.route == "profile" } == true,
+                        onClick = { navController.navigate("profile") }
+                    )
 
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Settings, "Settings") },
-                    label = { Text("Settings") },
-                    selected = currentDestination?.hierarchy?.any { it.route == "settings" } == true,
-                    onClick = { navController.navigate("settings") }
-                )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Settings, "Settings") },
+                        label = { Text("Settings") },
+                        selected = currentDestination?.hierarchy?.any { it.route == "settings" } == true,
+                        onClick = { navController.navigate("settings") }
+                    )
+                }
             }
         }
     ) { padding ->
@@ -197,6 +200,9 @@ fun MainScreen() {
                         onBackClick = { navController.popBackStack() },
                         onUserClick = { clickedUsername ->
                             navController.navigate("profile/$clickedUsername")
+                        },
+                        onFullscreenChange = { isFullscreen -> //
+                            isStreamScreenFullscreen = isFullscreen
                         }
                     )
                 }

@@ -55,6 +55,8 @@ class GlitchRepository
 
         suspend fun getStreamByUsername(username: String) = api.getStreamByUsername(username)
 
+        suspend fun updateStream(request: UpdateStreamRequest) = api.updateStream(request)
+
         suspend fun getLiveFollows() = api.getLiveFollows()
 
         suspend fun getFollows() = api.getFollows()

@@ -40,6 +40,7 @@ fun StreamScreen(
     username: String,
     onBackClick: () -> Unit,
     onUserClick: (String) -> Unit,
+    onFullscreenChange: (Boolean) -> Unit,
     viewModel: StreamViewModel = hiltViewModel()
 ) {
     val stream by viewModel.stream.collectAsState()
@@ -48,8 +49,11 @@ fun StreamScreen(
     val chatMessages by viewModel.chatMessages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val isOwnStream by viewModel.isOwnStream.collectAsState()
+
     var messageText by remember { mutableStateOf("") }
     var isFullscreen by remember { mutableStateOf(false) }
+    var showEditTitleDialog by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -58,6 +62,7 @@ fun StreamScreen(
     LaunchedEffect(username) {
         viewModel.loadStream(username)
         viewModel.loadUser(username)
+        viewModel.checkIsOwnStream(username)
         viewModel.connectToChat(username)
     }
 
@@ -68,6 +73,7 @@ fun StreamScreen(
     }
 
     LaunchedEffect(isFullscreen) {
+        onFullscreenChange(isFullscreen)
         activity?.let {
             if (isFullscreen) {
                 it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
@@ -88,7 +94,8 @@ fun StreamScreen(
 
     DisposableEffect(Unit) {
         onDispose {
-            viewModel.disconnectChat()
+            // viewModel.disconnectChat()
+            onFullscreenChange(false)
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             activity?.let {
                 val window = it.window
@@ -138,9 +145,17 @@ fun StreamScreen(
                         IconButton(onClick = onBackClick) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                         }
+                    },
+                    actions = {
+                        if (isOwnStream) {
+                            IconButton(onClick = { showEditTitleDialog = true }) {
+                                Icon(Icons.Default.Edit, "Edit Stream Title")
+                            }
+                        }
                     }
                 )
             },
+            // bottomBar = { if (!isFullscreen) BottomAppBar {} },
             snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { padding ->
             if (isLoading) {
@@ -347,6 +362,17 @@ fun StreamScreen(
             }
         }
     }
+
+    if (showEditTitleDialog) {
+        EditStreamTitleDialog(
+            currentTitle = stream?.title ?: "",
+            onDismiss = { showEditTitleDialog = false },
+            onSave = { newTitle ->
+                viewModel.updateStreamTitle(newTitle)
+                showEditTitleDialog = false
+            }
+        )
+    }
 }
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -418,3 +444,41 @@ fun formatTimestamp(timestamp: String): String {
     }
 }
 
+@Composable
+fun EditStreamTitleDialog(
+    currentTitle: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var title by remember { mutableStateOf(currentTitle) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Stream Title") },
+        text = {
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("Stream Title") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (title.isNotBlank()) {
+                        onSave(title)
+                    }
+                },
+                enabled = title.isNotBlank()
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}

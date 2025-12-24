@@ -3,6 +3,7 @@ package edu.corp.glitch.ui.screens.stream
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
+import edu.corp.glitch.data.api.UpdateStreamRequest
 import edu.corp.glitch.data.models.ChatMessage
 import edu.corp.glitch.data.models.ErrorResponse
 import edu.corp.glitch.data.models.Stream
@@ -41,6 +42,9 @@ class StreamViewModel @Inject constructor(
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
+
+    private val _isOwnStream = MutableStateFlow(false)
+    val isOwnStream: StateFlow<Boolean> = _isOwnStream
 
     private var webSocket: WebSocket? = null
     private val gson = Gson()
@@ -90,6 +94,13 @@ class StreamViewModel @Inject constructor(
         }
     }
 
+    fun checkIsOwnStream(streamUsername: String) {
+        viewModelScope.launch {
+            val currentUsername = userPreferences.username.first()
+            _isOwnStream.value = streamUsername == currentUsername
+        }
+    }
+
     fun toggleFollow(userId: Int) {
         viewModelScope.launch {
             try {
@@ -103,6 +114,26 @@ class StreamViewModel @Inject constructor(
                 _user.value?.username?.let { loadUser(it) }
             } catch (e: Exception) {
                 _errorMessage.value = "Error toggling follow: ${e.message}"
+            }
+        }
+    }
+
+    fun updateStreamTitle(newTitle: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val request = UpdateStreamRequest(title = newTitle)
+                val response = repository.updateStream(request)
+                if (response.isSuccessful) {
+                    _stream.value = response.body()
+                } else {
+                    val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                    _errorMessage.value = "Failed to update stream title: $errorMsg"
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "Error updating stream title: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
         }
     }
@@ -176,4 +207,3 @@ class StreamViewModel @Inject constructor(
         disconnectChat()
     }
 }
-
